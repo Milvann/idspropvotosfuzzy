@@ -1,0 +1,82 @@
+library(shiny)
+library(sets)
+
+#APP UI
+ui <- fluidPage(
+  titlePanel("SISTEMA DE INFERÊNCIA IDS E PROP VOTOS BOLSONARO"),
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("sliIDSid", "VALOR IDS", min = 50, max = 75, value = 1, step = 0.1),
+      actionButton("calculate", "Gerar")
+    ),
+    mainPanel(
+      textOutput("propvotostext"),
+      plotOutput("propvotosgraf")
+    )
+  )
+)
+
+#definir a lógica do servidor para inferência
+server <- function(input, output) {
+  observeEvent(input$calculate, {
+    
+    # Definindo funções de pertinência para qualidade do serviço e comida
+    sets_options("universe", seq(from = 40, to = 75, by = 0.1))
+    setVariables = function() {
+      variables <-
+        set(
+          
+          IDS = fuzzy_variable(
+            
+            baixo = fuzzy_trapezoid(corners = c(-1, 0, 55, 60)),
+            medio = fuzzy_trapezoid(corners = c(55,60,65,70)),
+            alto = fuzzy_trapezoid(corners = c(65,70,100,101))),
+          
+          prop.votos = fuzzy_variable(
+            baixo = fuzzy_trapezoid(corners = c(-1, 0, 45, 50)),
+            medio = fuzzy_trapezoid(corners = c(45,50,60,65)),
+            alto = fuzzy_trapezoid(corners = c(60,65,75,76)))
+        )
+      variables
+    }
+    
+    # Definindo o sistema de regras
+    setRules = function() {
+      rules <-
+        set(
+          fuzzy_rule(IDS %is% baixo, prop.votos %is% alto),
+          fuzzy_rule(IDS %is% medio, prop.votos %is% medio),
+          fuzzy_rule(IDS %is% alto, prop.votos %is% baixo)
+        )
+      rules
+    }
+    
+    #Sistema de inferência
+    
+    setFuzzySystem = function() {
+      system = fuzzy_system(setVariables(), setRules())
+      system
+    }
+    
+    #carregar o sistema
+    system = setFuzzySystem()
+    
+    #entrada do input do slider no sistema fuzzy
+    inference = fuzzy_inference(system, list(IDS = input$sliIDSid))
+    
+    # Desfuzzificar o resultado para obter a saída
+    tip <- gset_defuzzify(inference, "centroid")
+    inference_result <- inference # Chama a função para obter os resultados
+    tip <- gset_defuzzify(inference_result, "centroid")  # Desfuzzifica o resultado
+    
+    #definindo o output
+    output$propvotostext <- renderText({
+      tip
+      
+      })
+    
+    
+    })
+  }
+
+shinyApp(ui, server)
