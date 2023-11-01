@@ -1,0 +1,64 @@
+---
+title: "IDS BOLSONARO"
+author: "RENATO"
+date: "2023-10-31"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+##Sistema Fuzzy inferência difusa do IDS com a proporção de voto do Bolsonaro
+
+```{r}
+library(sets)
+sets_options("universe", seq(from = 40, to = 75, by = 0.1))
+```
+
+Fuzzificação das variáveis. As funções foram feitas a partir da observação dos gráficos e colinearidade de -0,53
+
+```{r}
+variables <-
+  set(
+    
+    IDS = fuzzy_variable(
+      
+      baixo = fuzzy_trapezoid(corners = c(-1, 0, 55, 60)),
+      medio = fuzzy_trapezoid(corners = c(55,60,65,70)),
+      alto = fuzzy_trapezoid(corners = c(65,70,100,101))),
+    
+    prop.votos = fuzzy_variable(
+      baixo = fuzzy_trapezoid(corners = c(-1, 0, 45, 50)),
+      medio = fuzzy_trapezoid(corners = c(45,50,60,65)),
+      alto = fuzzy_trapezoid(corners = c(60,65,75,76)))
+    )
+```
+
+Sistema de regras para inferência.
+
+```{r}
+rules <-
+  set(
+    fuzzy_rule(IDS %is% baixo, prop.votos %is% alto),
+    fuzzy_rule(IDS %is% medio, prop.votos %is% medio),
+    fuzzy_rule(IDS %is% alto, prop.votos %is% baixo)
+  )
+```
+
+Sistemas e Inferência
+
+```{r}
+system <- fuzzy_system(variables, rules)
+print(system)
+plot(system)
+```
+
+```{r}
+fi <- fuzzy_inference(system, list(IDS=50.1))
+plot(fi)
+```
+
+Desfuzificação. Output final em % de votos.
+
+```{r}
+gset_defuzzify(fi, "centroid")
+```
